@@ -1,4 +1,4 @@
-.PHONY: setup emulator emulator-stop corpus db test lint format
+.PHONY: setup emulator emulator-stop corpus db load-code load test lint format
 
 include $(wildcard .env)
 export
@@ -17,6 +17,11 @@ corpus:
 
 db:
 	uv run python -m legacylens.store.spanner
+
+load-code:
+	uv run python -m legacylens.ingest.code.load
+
+load: db load-code
 
 test:
 	uv run pytest
