@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LegacyLens</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6676; --line: #e1e4ea;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --code: #f1f3f6; --warn: #9a5b00;
+    --Program: #2f5bd3; --Job: #a3480b; --Dataset: #13795b; --Copybook: #7a4bc2;
+    --Transaction: #b0204f; --Screen: #00739e; --Paragraph: #59606e; --BusinessRule: #9a5b00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1a1f27; --text: #e4e7ec; --muted: #9aa3b2; --line: #2b313c;
+      --accent: #7d9df0; --accent-soft: #24304a; --code: #232934; --warn: #e2a64a;
+      --Program: #7d9df0; --Job: #e6935a; --Dataset: #4fc39b; --Copybook: #b292e8;
+      --Transaction: #ec6b93; --Screen: #4fb8de; --Paragraph: #a3aab6; --BusinessRule: #e2a64a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 20px;
+    border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .pill { font-size: 12px; padding: 2px 10px; border-radius: 99px; background: var(--accent-soft);
+    color: var(--accent); white-space: nowrap; }
+  .pill.warn { color: var(--warn); background: var(--code); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: calc(100vh - 56px); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } }
+  section { overflow: auto; padding: 16px 20px; }
+  #chat { border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  #messages { flex: 1; overflow: auto; }
+  .msg { margin: 0 0 14px; padding: 12px 14px; border-radius: 10px; background: var(--panel);
+    border: 1px solid var(--line); cursor: default; }
+  .msg.user { background: var(--accent-soft); border-color: transparent; }
+  .msg.bot.selected { outline: 2px solid var(--accent); }
+  .msg .meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+  form { display: flex; gap: 8px; margin-top: 10px; }
+  textarea { flex: 1; resize: vertical; min-height: 44px; padding: 10px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; }
+  button { border: 0; border-radius: 8px; padding: 0 16px; background: var(--accent); color: #fff;
+    font: inherit; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .modes { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .examples button { background: var(--panel); color: var(--text); border: 1px solid var(--line);
+    padding: 4px 10px; font-size: 13px; text-align: left; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 8px; }
+  h2:first-child { margin-top: 0; }
+  .chip { display: inline-block; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 2px 8px; border-radius: 6px; margin: 0 4px 4px 0; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); cursor: pointer; }
+  .chip.on { border-color: var(--accent); background: var(--accent-soft); }
+  .chip small { color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  .card .title { font-weight: 600; font-size: 14px; }
+  .card .head { color: var(--muted); font-size: 12px; }
+  .card .text { font-size: 13px; white-space: pre-wrap; max-height: 9em; overflow: auto; margin-top: 6px; }
+  .facts li { font-size: 13px; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: var(--code); border-radius: 4px; }
+  code { padding: 1px 4px; }
+  pre { padding: 8px 10px; overflow: auto; }
+  pre code { padding: 0; background: none; }
+  svg text { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--text); }
+  svg .edge { stroke: var(--line); stroke-width: 1.5; }
+  svg .elabel { fill: var(--muted); font-size: 9px; }
+  svg g.node { cursor: pointer; }
+  .empty { color: var(--muted); font-size: 14px; }
+  #drawer { position: fixed; top: 0; right: 0; width: min(640px, 100vw); height: 100vh; background: var(--panel);
+    border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.15); padding: 16px 20px; overflow: auto;
+    transform: translateX(100%); transition: transform .2s; }
+  #drawer.open { transform: none; }
+  #drawer .bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+  #drawer .bar span { color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  .md h2 { font-size: 20px; text-transform: none; letter-spacing: 0; color: var(--text); }
+  .md h3 { font-size: 16px; }
+  .md table { border-collapse: collapse; } .md td, .md th { border: 1px solid var(--line); padding: 2px 6px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>LegacyLens</h1>
+  <span class="sub">Ask about the AWS CardDemo mainframe code and its docs</span>
+  <span id="llm" class="pill">checking…</span>
+  <span id="counts" class="sub"></span>
+  <a href="#" id="browse" class="sub">Browse the knowledge pages</a>
+</header>
+<main>
+  <section id="chat">
+    <div id="messages">
+      <div class="examples" id="examples"></div>
+    </div>
+    <form id="ask">
+      <textarea id="q" placeholder="Which job runs the posting program, and what does it read?" required></textarea>
+      <button id="send">Ask</button>
+    </form>
+    <div class="modes">
+      <label><input type="radio" name="mode" value="workflow" checked> Workflow (graph first, then one LLM call)</label>
+      <label><input type="radio" name="mode" value="agentic" id="agentic"> Agentic (ADK agent picks its tools)</label>
+    </div>
+  </section>
+  <section id="evidence"><p class="empty">Ask a question. The evidence behind each answer shows up here: the route, the code entities, their graph neighbourhood and the document chunks.</p></section>
+</main>
+<aside id="drawer"><div class="bar"><span id="dpath"></span><button id="dclose">Close</button></div><div id="dbody" class="md"></div></aside>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const typeOf = (id) => ({PROGRAM:"Program",JOB:"Job",DATASET:"Dataset",COPYBOOK:"Copybook",TRANSACTION:"Transaction",
+  SCREEN:"Screen",PARAGRAPH:"Paragraph",BUSINESSRULE:"BusinessRule"})[id.split(":")[0]] || "Program";
+const shortId = (id) => id.includes(":") ? id.split(":").slice(1).join(":") : id;
+
+// A small Markdown renderer: enough for answers and the generated knowledge pages.
+function md(src) {
+  const blocks = [];
+  src = src.replace(/```\w*\n([\s\S]*?)```/g, (_, code) => { blocks.push(code); return `\u0000${blocks.length - 1}\u0000`; });
+  src = src.replace(/^---\n[\s\S]*?\n---\n/, "");  // drop frontmatter
+  const inline = (t) => esc(t)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[\s(])[_*]([^_*]+)[_*](?=[\s).,:;]|$)/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, u) => `<a href="${u}" data-link="${u}">${t}</a>`);
+  const out = []; let list = false;
+  for (const line of src.split("\n")) {
+    const blk = line.match(/^\u0000(\d+)\u0000$/);
+    if (/^\s*[-*] /.test(line) || /^\s*\d+\. /.test(line)) {
+      if (!list) { out.push("<ul>"); list = true; }
+      out.push(`<li>${inline(line.replace(/^\s*([-*]|\d+\.) /, ""))}</li>`); continue;
+    }
+    if (list) { out.push("</ul>"); list = false; }
+    if (blk) out.push(`<pre><code>${esc(blocks[+blk[1]])}</code></pre>`);
+    else if (/^#{1,4} /.test(line)) { const n = line.match(/^#+/)[0].length; out.push(`<h${n + 1}>${inline(line.slice(n + 1))}</h${n + 1}>`); }
+    else if (line.trim()) out.push(`<p>${inline(line)}</p>`);
+  }
+  if (list) out.push("</ul>");
+  return out.join("");
+}
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {});
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json();
+}
+
+let answers = [];
+async function init() {
+  try {
+    const s = await api("/api/status");
+    $("#llm").textContent = s.llm ? `LLM: ${s.model}` : "No LLM key: evidence-only answers";
+    $("#llm").className = s.llm ? "pill" : "pill warn";
+    $("#agentic").disabled = !s.llm;
+    const c = s.counts;
+    $("#counts").textContent = `${c.Program || 0} programs · ${c.Job || 0} jobs · ${c.Dataset || 0} datasets · ${c.Chunk || 0} doc chunks`;
+  } catch (e) { $("#llm").textContent = "Database not reachable: start the emulator and run make load"; $("#llm").className = "pill warn"; }
+  const ex = await api("/api/examples").catch(() => []);
+  $("#examples").innerHTML = ex.slice(0, 8).map((q) => `<button type="button" title="expected route: ${q.route}">${esc(q.question)}</button>`).join("");
+  $("#examples").querySelectorAll("button").forEach((b) => b.onclick = () => { $("#q").value = b.textContent; $("#ask").requestSubmit(); });
+}
+
+$("#ask").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const question = $("#q").value.trim(); if (!question) return;
+  const mode = document.querySelector("input[name=mode]:checked").value;
+  addMsg("user", `<div>${esc(question)}</div>`);
+  const pending = addMsg("bot", `<div class="meta">Thinking…</div>`);
+  $("#send").disabled = true; $("#q").value = "";
+  try {
+    const a = await api("/api/ask", {question, mode});
+    answers.push(a); const i = answers.length - 1;
+    const tag = a.mode === "llm" ? `${a.strategy} · ${esc(a.model)}` : "evidence only (no LLM)";
+    pending.innerHTML = `<div class="meta"><span class="pill">${esc(a.route)}</span><span>${tag}</span>${a.tokens ? `<span>${a.tokens} tokens</span>` : ""}</div><div class="md">${md(a.text)}</div>`;
+    pending.onclick = () => showEvidence(i); bindLinks(pending); showEvidence(i);
+  } catch (e) { pending.innerHTML = `<div class="meta">Error</div>${esc(e.message)}`; }
+  $("#send").disabled = false;
+};
+$("#q").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#ask").requestSubmit(); } };
+
+function addMsg(kind, html) {
+  const d = document.createElement("div"); d.className = `msg ${kind}`; d.innerHTML = html;
+  $("#messages").appendChild(d); d.scrollIntoView({block: "end"}); return d;
+}
+
+function showEvidence(i) {
+  document.querySelectorAll(".msg.bot").forEach((m, j) => m.classList.toggle("selected", j === i));
+  const a = answers[i], r = a.retrieval; let h = "";
+  h += `<h2>Route</h2><span class="pill">${esc(r.route)}</span> <span class="sub">${{graph: "structure question: answered from the code graph", "graph+docs": "started at code entities, then read the documents linked to them", docs: "no code entity named: hybrid search over the documents"}[r.route] || ""}</span>`;
+  if (a.model_reason && a.mode === "llm") h += `<p class="sub">Model: ${esc(a.model)} (${esc(a.model_reason)})</p>`;
+  if (a.trace?.length) h += `<h2>Agent tool calls</h2><ol class="facts">${a.trace.filter((t) => t.tool).map((t) => `<li><code>${esc(t.tool)}</code> ${esc(JSON.stringify(t.args))}</li>`).join("")}</ol>`;
+  if (r.entities.length) h += `<h2>Entities found</h2>` + r.entities.map((e, j) => `<span class="chip ${j === 0 ? "on" : ""}" data-fact="${j}">${esc(e.node_id)} <small>${esc(e.method)}${e.surface && e.surface.toUpperCase() !== shortId(e.node_id) ? ` "${esc(e.surface)}"` : ""}</small></span>`).join("");
+  if (r.graph_facts.length) h += `<h2>Graph neighbourhood</h2><div id="graph"></div><div id="facts"></div>`;
+  h += `<h2>Document chunks (${r.chunks.length})</h2>` + (r.chunks.length ? r.chunks.map((c) => `<div class="card"><div class="title">${esc(c.title)} <code>${esc(c.doc_id)}</code></div><div class="head">${esc(c.heading)} · ${esc(c.via)} · score ${c.score.toFixed(2)}${c.linked_to?.length ? ` · linked to ${c.linked_to.map(esc).join(", ")}` : ""}</div><div class="text">${esc(c.text)}</div></div>`).join("") : `<p class="empty">None.</p>`);
+  $("#evidence").innerHTML = h;
+  $("#evidence").querySelectorAll("[data-fact]").forEach((c) => c.onclick = () => {
+    $("#evidence").querySelectorAll("[data-fact]").forEach((x) => x.classList.toggle("on", x === c));
+    drawFact(r, +c.dataset.fact);
+  });
+  if (r.graph_facts.length) drawFact(r, 0);
+}
+
+function drawFact(r, j) {
+  const f = r.graph_facts.find((x) => x.node_id === r.entities[j]?.node_id) || r.graph_facts[0];
+  if (!f) return;
+  const byId = new Map();  // one box per neighbour, with every edge type between them
+  for (const e of f.edges) {
+    const out = e.src === f.node_id, other = out ? e.dst : e.src;
+    if (!byId.has(other)) { if (byId.size >= 18) continue; byId.set(other, {id: other, labels: []}); }
+    const label = out ? `${e.edge} →` : `← ${e.edge}`;
+    if (!byId.get(other).labels.includes(label)) byId.get(other).labels.push(label);
+  }
+  const nbrs = [...byId.values()];
+  if (!nbrs.length) { $("#graph").innerHTML = `<p class="sub">No direct relationships besides its program.</p>`; }
+  const W = 560, H = 360, cx = W / 2, cy = H / 2, R = 140;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="graph neighbourhood of ${esc(f.node_id)}">`;
+  const pos = nbrs.map((n, k) => { const t = (2 * Math.PI * k) / Math.max(nbrs.length, 1) - Math.PI / 2; return [cx + R * 1.45 * Math.cos(t), cy + R * Math.sin(t)]; });
+  nbrs.forEach((n, k) => { const [x, y] = pos[k];
+    svg += `<line class="edge" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/><text class="elabel" x="${cx + (x - cx) * 0.62}" y="${cy + (y - cy) * 0.62 - 4}" text-anchor="middle">${esc(n.labels.join(", "))}</text>`; });
+  const node = (id, x, y, big) => { const color = `var(--${typeOf(id)})`, label = shortId(id), w = Math.max(60, label.length * 7 + 14);
+    return `<g class="node" data-node="${esc(id)}"><rect x="${x - w / 2}" y="${y - 12}" width="${w}" height="24" rx="6" fill="var(--panel)" stroke="${color}" stroke-width="${big ? 2.5 : 1.5}"/><text x="${x}" y="${y + 4}" text-anchor="middle" style="fill:${color}">${esc(label)}</text></g>`; };
+  nbrs.forEach((n, k) => svg += node(n.id, ...pos[k], false));
+  svg += node(f.node_id, cx, cy, true) + "</svg>";
+  if (nbrs.length) $("#graph").innerHTML = svg + `<p class="sub">Click a box to open its knowledge page.${byId.size >= 18 ? " Showing the first 18 neighbours." : ""}</p>`;
+  $("#graph").querySelectorAll("[data-node]").forEach((g) => g.onclick = () => openNode(g.dataset.node));
+  let facts = `<div class="card"><div class="title">${esc(f.node_id)}</div><div class="head">${esc(f.source || "")} ${f.lines?.[0] ? `lines ${f.lines[0]}-${f.lines[1]}` : ""}</div>${f.summary ? `<div>${esc(f.summary)}</div>` : ""}`;
+  if (f.rules?.length) facts += `<ul class="facts">${f.rules.slice(0, 12).map((x) => `<li><code>${esc(shortId(x.paragraph))}</code> line ${x.line}: ${esc(x.rule)}</li>`).join("")}</ul>`;
+  if (f.code) facts += `<pre><code>${esc(f.code)}</code></pre>`;
+  $("#facts").innerHTML = facts + "</div>";
+}
+
+// Knowledge pages (the OKF bundle) open in a side drawer; links inside it stay in it.
+let drawerPath = "index.md";
+async function openPage(path) {
+  try {
+    const p = await api(`/api/okf?path=${encodeURIComponent(path)}`);
+    drawerPath = path; $("#dpath").textContent = `knowledge/${path}`;
+    $("#dbody").innerHTML = md(p.text); bindLinks($("#dbody"), true); $("#drawer").classList.add("open"); $("#drawer").scrollTop = 0;
+  } catch (e) { $("#dpath").textContent = e.message; $("#drawer").classList.add("open"); }
+}
+async function openNode(id) {
+  const n = await api(`/api/node/${encodeURIComponent(id)}`).catch(() => null);
+  if (n?.page) openPage(n.page); else { $("#dbody").innerHTML = `<p>${esc(id)} has no knowledge page (it is external, a system name, or a paragraph).</p>`; $("#drawer").classList.add("open"); }
+}
+function bindLinks(root, inDrawer) {
+  root.querySelectorAll("a[data-link]").forEach((a) => {
+    const u = a.dataset.link;
+    if (/^https?:/.test(u)) { a.target = "_blank"; a.rel = "noopener"; return; }
+    if (!inDrawer || !u.endsWith(".md") || u.startsWith("../../")) { a.removeAttribute("href"); return; }
+    a.onclick = (e) => { e.preventDefault();
+      const parts = drawerPath.split("/").slice(0, -1);
+      for (const seg of u.split("/")) { if (seg === "..") parts.pop(); else if (seg !== ".") parts.push(seg); }
+      openPage(parts.join("/")); };
+  });
+  root.querySelectorAll("code").forEach((c) => { if (/^[A-Z]+:[A-Z0-9.#@$-]+$/.test(c.textContent) && !c.closest("pre")) { c.style.cursor = "pointer"; c.title = "Open knowledge page"; c.onclick = () => openNode(c.textContent); } });
+}
+$("#dclose").onclick = () => $("#drawer").classList.remove("open");
+$("#browse").onclick = (e) => { e.preventDefault(); openPage("index.md"); };
+init();
+</script>
+</body>
+</html>

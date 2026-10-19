@@ -26,10 +26,10 @@ flowchart LR
   Chunker -->|chunks| C
   Linker -->|MENTIONS edges| G
   subgraph Serve["Answer (online)"]
-    UI["Chat UI"] --> Router["ADK router agent"]
-    Router --> T1["resolve_entities"] & T2["graph_query"] & T3["linked_chunks"] & T4["hybrid_search"]
+    UI["Chat page (make ui)<br/>or ADK dev UI (make adk)"] --> Router["Workflow agent<br/>or ADK agentic agent"]
+    Router --> T1["find_entities"] & T2["describe_entity /<br/>query_graph"] & T3["linked_documents"] & T4["search_documents"]
     T1 & T2 & T3 & T4 --> Store
-    Router --> LLM["LLM via LiteLLM<br/>Gemini free tier or Ollama"]
+    Router --> LLM["LLM via LiteLLM<br/>Gemini free tier or Ollama<br/>(optional: evidence-only without)"]
   end
   Store -. generate .-> OKF["OKF bundle<br/>Markdown concept pages"]
   OKF -.-> Router
@@ -82,6 +82,15 @@ The parser turns each source file into nodes and edges. What it must extract:
 | BMS map           | Screen                         | `USES_SCREEN` (program to map)              |
 | CICS CSD          | Transaction                    | `STARTS` (transaction to program)           |
 | Business rules    | BusinessRule                   | `DEFINES_RULE` (paragraph to rule)          |
+| `EXEC SQL` (Db2)  | Dataset (`kind: db2_table`)    | `READS`/`WRITES` (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) |
+| `EXEC DLI` (IMS)  | Dataset (`kind: ims_segment`)  | `READS` (`GU`, `GN`, `GNP`), `WRITES` (`ISRT`, `REPL`, `DLET`) |
+| MQ calls          | Dataset (`kind: mq_queue`)     | `WRITES` to queues named by a literal, in programs that call `MQPUT` |
+
+The three optional sub-applications (Db2 transaction types, IMS/Db2/MQ
+authorizations, VSAM/MQ) are parsed too, and their nodes carry `props.app`. Two gaps
+remain: queues a program reads come from the MQ trigger message at run time, and
+batch IMS programs name segments inside `CALL 'CBLTDLI'` parameter lists, so neither
+shows up as an edge yet.
 
 Business rules start simple: the reject reason codes and `COMPUTE` statements an
 extractor can see, each pointing at its source lines. LLM-written rule summaries come
@@ -96,8 +105,9 @@ them from copybook `COMEN02Y`), and many `EXEC CICS` statements span several lin
    Jira ticket becomes one chunk for the description plus one per comment. Each
    chunk keeps its heading path and the document title, because "102" means nothing
    without "Reject reason codes" above it.
-2. **Embed** each chunk locally with `BAAI/bge-small-en-v1.5` (384 dimensions) through
-   fastembed. It's free, runs on a laptop CPU and needs no PyTorch.
+2. **Embed** each chunk locally with `all-MiniLM-L6-v2` (384 dimensions), run through
+   ONNX Runtime. It's free, runs on a laptop CPU, needs no PyTorch, and downloads once
+   (about 80 MB) from a public bucket.
 3. **Link** each chunk to the code entities it talks about, as `MENTIONS` edges with a
    `method` and `confidence`:
    - `exact_name` (1.0): the text contains a known name such as `CBTRN02C`.
@@ -140,38 +150,44 @@ flowchart TD
 
 Every answer lists its evidence: node IDs with source lines and chunk IDs with titles.
 
-### 6. Agents (thread 4)
+### 6. Agents ([ADR-0009](adr/0009-answering-and-model-routing.md))
 
-Google ADK hosts a single router agent with four tools: `resolve_entities`,
-`graph_query`, `linked_chunks` and `hybrid_search`. We build it twice, on purpose:
+There are two agents, on purpose:
 
-1. **Workflow version**: the four steps above run in fixed order as plain Python, and
-   the LLM only writes the final answer. It's predictable and cheap.
-2. **Agentic version**: the LLM decides which tools to call and when to stop.
+1. **Workflow agent** (`agents/workflow_agent.py`, the default): `graph_first()` runs
+   the steps above as plain Python and the LLM only writes the final answer, from
+   labelled GRAPH FACTS and DOCUMENTS sections. One model call per question.
+2. **Agentic agent** (`agents/agentic_agent.py`): a Google ADK `LlmAgent` with six
+   tools (`find_entities`, `describe_entity`, `query_graph`, `linked_documents`,
+   `search_documents`, `read_concept`). The model decides which to call and when to
+   stop.
 
-The eval set decides which one wins, and the difference between them is one of the
-main lessons of the project. `graph_query` starts as a set of named, parameterised
-GQL templates (`callers_of`, `files_of_job`, `impact_of_copybook`). Free-form
-text-to-GQL comes later as a stretch goal, because a template can't hallucinate a
-label.
+Both follow the same rules: code beats documents, cite every claim, and say "not
+found" rather than guess. `query_graph` only runs named, parameterised GQL templates
+(`jobs_running`, `files_of`, `callers_of`, `programs_including` and so on), because a
+template can't invent a label. Free-form text-to-GQL is a stretch goal.
 
-The model sits behind LiteLLM, which ADK supports directly, so one setting switches
-between Gemini's free tier and a local Ollama model ([ADR-0006](adr/0006-models-and-cost.md)).
+The model sits behind LiteLLM, so one setting switches between Gemini's free tier and
+a local Ollama model ([ADR-0006](adr/0006-models-and-cost.md)). With no model at all,
+the workflow agent answers with the evidence alone. `LLM_MODEL_SMALL` turns on a
+simple router that sends graph-only questions to a cheaper model.
 
 ### 7. OKF knowledge layer ([ADR-0007](adr/0007-okf-knowledge-layer.md))
 
-After the graph and chunks exist, a generator writes an Open Knowledge Format bundle:
-one Markdown page per program, job, copybook and dataset, with YAML frontmatter, a
-plain-language summary, and links to its neighbours. Agents can browse it starting
-at `index.md`, people can read it on GitHub, and it is a fifth retrieval strategy to
-compare in the eval.
+`make okf` writes `knowledge/`, an Open Knowledge Format bundle with one Markdown page
+per program, job, transaction, screen, copybook and dataset. Each page has YAML
+frontmatter, its relationships as links to other pages, business rules and
+paragraphs for programs, steps for jobs, and the documents that mention it. Agents
+read it with the `read_concept` tool, people read it on GitHub, and `okf_browse` is
+scored in the eval next to the other strategies.
 
-### 8. Chat UI (thread 4)
+### 8. Chat UI ([ADR-0010](adr/0010-custom-chat-page.md))
 
-The first UI is ADK's built-in dev web UI (`adk web`), which costs nothing and shows
-every tool call. That makes it the best place to learn how the agent works. A small
-custom chat page with an evidence panel (graph path plus cited chunks) follows once
-the agent is stable.
+`make ui` serves a chat page at http://localhost:8000. The left side is the chat; the
+right side is the evidence for the selected answer: route, entities and how they were
+found, an SVG drawing of the graph neighbourhood, the facts and COBOL, and the
+document chunks with their scores. Clicking an entity opens its knowledge page.
+`make adk` serves the agentic agent in ADK's own dev UI, which shows every tool call.
 
 ### 9. Evaluation
 
@@ -183,7 +199,7 @@ hybrid, graph only, graph-first with linked chunks, agentic, and OKF browse.
 
 ## Cost
 
-Everything runs on your laptop for free: the Spanner emulator, fastembed embeddings,
+Everything runs on your laptop for free: the Spanner emulator, local ONNX embeddings,
 and either Ollama or Gemini's free tier. Nothing needs a Google Cloud project or a
 credit card. The one limit is that the emulator keeps data in memory only, so
 `make load` rebuilds the store from source in seconds after each restart.
@@ -197,9 +213,13 @@ src/legacylens/
   ingest/code/       COBOL, copybook, JCL, BMS parsers           (thread 2)
   ingest/docs/       chunking, embedding, entity linking         (thread 3)
   retrieval/         graph templates, hybrid search, fusion      (threads 3-4)
-  agents/            ADK router agent and tools                  (thread 4)
-  okf/               OKF bundle generator                        (later)
+  agents/            workflow and agentic agents, tools, judge   (milestone 4)
+  okf/               OKF bundle generator                        (milestone 5)
+  ui/                FastAPI chat page                           (milestone 6)
+  evals.py           retrieval and answer scoring
+adk/lens/            entry point for ADK's dev UI (make adk)
+knowledge/           the generated OKF bundle (make okf)
 corpus/              CardDemo lock file and synthetic documents
-evals/               questions and scoring
+evals/               questions and results
 docs/                this file, decision records, learning notes
 ```

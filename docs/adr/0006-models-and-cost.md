@@ -10,8 +10,13 @@ Google ADK.
 
 ## Decision
 
-- **Embeddings**: `BAAI/bge-small-en-v1.5` (384 dimensions) through fastembed. It runs
-  on CPU via ONNX, with no PyTorch and no API key. Thread 3 may compare a second model.
+- **Embeddings**: `all-MiniLM-L6-v2` (384 dimensions), run with ONNX Runtime and the
+  `tokenizers` library. The model is downloaded once from Chroma's public bucket and
+  checked against a SHA-256 hash. It runs on CPU with no PyTorch and no API key.
+  (The first plan named `bge-small-en-v1.5` through fastembed. That model is
+  hosted on Hugging Face, which some networks block, while this download works
+  everywhere we tested, CI included. Both are 384-dimensional, so the schema didn't
+  change.)
 - **LLM**: ADK agents use the LiteLLM model wrapper, so the model is a setting:
   - default: Gemini Flash on the Google AI Studio free tier (needs a free API key)
   - offline: a local model through Ollama, such as a small Qwen or Llama

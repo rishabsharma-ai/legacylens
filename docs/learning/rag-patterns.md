@@ -9,7 +9,7 @@ builds all of them so the eval set can compare them on the same questions.
 Embed the question, find the k most similar chunks, and paste them into the prompt.
 
 - **Good at**: "what does S0C7 mean", where the answer sits in one paragraph.
-- **Bad at**: "which programs copy CVACT01Y". That answer is spread across 13 files
+- **Bad at**: "which programs copy CVACT01Y". That answer is spread across 11 files
   and is never written down anywhere.
 - **Here**: `hybrid_search` with the keyword half turned off.
 

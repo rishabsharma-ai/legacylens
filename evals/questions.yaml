@@ -57,14 +57,15 @@
   expected_route: graph
   entities: [COPYBOOK:CVACT01Y]
   answer_facts:
-    - "13 programs: CBACT01C, CBACT04C, CBEXPORT, CBIMPORT, CBSTM03A, CBTRN01C, CBTRN02C, COACTUPC, COACTVWC, COBIL00C, COCRDSLC, COCRDUPC, COTRN02C."
+    - "11 base-app programs: CBACT01C, CBACT04C, CBEXPORT, CBIMPORT, CBSTM03A, CBTRN01C, CBTRN02C, COACTUPC, COACTVWC, COBIL00C, COTRN02C."
+    - "COCRDSLC and COCRDUPC mention it only in a commented-out COPY line, so they don't include it."
 
 - id: q07
   question: If I change the USRSEC record layout, what do I need to recompile?
   expected_route: graph+docs
   entities: [COPYBOOK:CSUSR01Y, DATASET:USRSEC]
   answer_facts:
-    - "The 12 programs that copy CSUSR01Y, including COSGN00C, COMEN01C, COADM01C and COUSR00C to COUSR03C."
+    - "Every program that copies CSUSR01Y, including COSGN00C, COMEN01C, COADM01C and COUSR00C to COUSR03C."
   sources: [JIRA:CARD-103]
 
 - id: q08

@@ -33,6 +33,11 @@ def client() -> spanner.Client:
     return spanner.Client(project=settings.project)
 
 
+def database(name: str = settings.database) -> _db.Database:
+    """The existing database; run reset_database() first on a fresh emulator."""
+    return client().instance(settings.instance).database(name)
+
+
 def reset_database(name: str = settings.database) -> _db.Database:
     """Drop and recreate the database with the current schema."""
     c = client()

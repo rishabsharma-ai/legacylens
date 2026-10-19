@@ -9,3 +9,4 @@ __pycache__/
 corpus/carddemo/
 .claude/settings.local.json
 .DS_Store
+evals/.cache/

@@ -20,3 +20,25 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "emulator" in item.keywords:
             item.add_marker(skip)
+
+
+@pytest.fixture(scope="session")
+def knowledge_db():
+    """A database with the full code graph and documents, used as the default database.
+
+    The agents, the chat UI and the OKF generator call the default database, so this
+    points graph_queries.database() at a fresh test copy for the whole session.
+    """
+    from legacylens.ingest.code.build import build_graph
+    from legacylens.ingest.code.load import load_graph
+    from legacylens.ingest.docs.load import load_docs
+    from legacylens.retrieval import graph_queries, search
+    from legacylens.store.spanner import reset_database
+
+    db = reset_database("test_knowledge")
+    load_graph(db, build_graph())
+    load_docs(db)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(graph_queries, "database", lambda: db)
+        search._matchers.clear()
+        yield db

@@ -1,6 +1,6 @@
 # ADR-0007: Generate an OKF bundle as a curated layer on top of the graph
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-19
 
 ## Context
@@ -49,3 +49,18 @@ Treat OKF as an output of the knowledge store, not a replacement for it:
 - Generated summaries can be wrong. They are marked as generated, and graph facts
   come from queries, never from the LLM.
 - The spec is v0.1, so recheck it before building.
+
+## Implementation notes (milestone 5)
+
+- Rechecked the spec on 2026-10-19: still v0.1. `type` is the only required field;
+  `title`, `description`, `resource`, `tags` and `timestamp` are optional common
+  fields. `index.md` per folder is optional; we write one per folder.
+- Links are relative (`../jobs/POSTTRAN.md`), so they work on GitHub and on disk. The
+  spec's example uses root-relative links, which GitHub would resolve against the repo
+  root instead of the bundle.
+- `resource` is the source file on GitHub at the pinned CardDemo commit.
+- No `timestamp` field and no `log.md`: both change on every run and would break the
+  clean-diff rule. The commit history is the log.
+- Pages hold graph facts only. The LLM summary is left out for now, so the bundle
+  needs no key and never contains generated claims.
+- A test fails when the committed bundle no longer matches the graph; run `make okf`.
