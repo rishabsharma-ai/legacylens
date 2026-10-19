@@ -96,8 +96,9 @@ them from copybook `COMEN02Y`), and many `EXEC CICS` statements span several lin
    Jira ticket becomes one chunk for the description plus one per comment. Each
    chunk keeps its heading path and the document title, because "102" means nothing
    without "Reject reason codes" above it.
-2. **Embed** each chunk locally with `BAAI/bge-small-en-v1.5` (384 dimensions) through
-   fastembed. It's free, runs on a laptop CPU and needs no PyTorch.
+2. **Embed** each chunk locally with `all-MiniLM-L6-v2` (384 dimensions), run through
+   ONNX Runtime. It's free, runs on a laptop CPU, needs no PyTorch, and downloads once
+   (about 80 MB) from a public bucket.
 3. **Link** each chunk to the code entities it talks about, as `MENTIONS` edges with a
    `method` and `confidence`:
    - `exact_name` (1.0): the text contains a known name such as `CBTRN02C`.
@@ -183,7 +184,7 @@ hybrid, graph only, graph-first with linked chunks, agentic, and OKF browse.
 
 ## Cost
 
-Everything runs on your laptop for free: the Spanner emulator, fastembed embeddings,
+Everything runs on your laptop for free: the Spanner emulator, local ONNX embeddings,
 and either Ollama or Gemini's free tier. Nothing needs a Google Cloud project or a
 credit card. The one limit is that the emulator keeps data in memory only, so
 `make load` rebuilds the store from source in seconds after each restart.

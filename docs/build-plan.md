@@ -125,7 +125,7 @@ strategies on the eval set.
      prefixed with the key and summary.
    - Target 100 to 400 tokens; split longer sections at paragraph breaks.
    - IDs follow `CHUNK:<doc_id>#<n>`.
-2. `ingest/docs/embed.py`: use fastembed with `BAAI/bge-small-en-v1.5` (384
+2. `ingest/docs/embed.py`: use `all-MiniLM-L6-v2` through ONNX Runtime (384
    dimensions). Embed the heading and text together. Cache vectors in
    `.cache/embeddings/` keyed by text hash, so reloads are instant.
 3. `corpus/aliases.yaml`: hand-kept nicknames to node IDs, for example "posting job",
