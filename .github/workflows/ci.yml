@@ -1,0 +1,23 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      spanner:
+        image: gcr.io/cloud-spanner-emulator/emulator:1.5.59
+        ports: ["9010:9010"]
+    env:
+      SPANNER_EMULATOR_HOST: localhost:9010
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run python scripts/fetch_corpus.py
+      - run: uv run pytest -v

@@ -1,0 +1,141 @@
+# Seed evaluation set. Every answer fact was checked against the CardDemo source
+# (pinned in corpus/carddemo.lock) or the synthetic docs in corpus/docs.
+#
+# expected_route says which retrieval path should answer best:
+#   graph      - structure only (calls, files, jobs); docs add nothing
+#   graph+docs - start at a code entity, then read the chunks linked to it
+#   docs       - no code entity in the question; vector / keyword search
+#   conflict   - docs and code disagree; the answer must side with code and say so
+# entities are node_ids the router should resolve. Thread 3 grows this set.
+
+- id: q01
+  question: Which job runs the transaction posting program, and which files does it read?
+  expected_route: graph
+  entities: [PROGRAM:CBTRN02C, JOB:POSTTRAN]
+  answer_facts:
+    - "POSTTRAN runs CBTRN02C in step STEP15."
+    - "It reads DALYTRAN, CARDXREF, ACCTDATA and TCATBALF."
+    - "It writes TRANSACT, ACCTDATA, TCATBALF and DALYREJS."
+
+- id: q02
+  question: What happens after a user signs on?
+  expected_route: graph+docs
+  entities: [PROGRAM:COSGN00C]
+  answer_facts:
+    - "COSGN00C reads the user from USRSEC."
+    - "Admins (type A) go to COADM01C; other users go to COMEN01C via EXEC CICS XCTL."
+  sources: [CONFLUENCE:2005]
+
+- id: q03
+  question: Why would a transaction be rejected during posting?
+  expected_route: graph+docs
+  entities: [PROGRAM:CBTRN02C]
+  answer_facts:
+    - "100 invalid card number, 101 account not found, 102 overlimit, 103 after expiration."
+  sources: [CONFLUENCE:2003]
+
+- id: q04
+  question: How is monthly interest calculated?
+  expected_route: graph+docs
+  entities: [PROGRAM:CBACT04C]
+  answer_facts:
+    - "Category balance times the annual rate divided by 1200."
+    - "The rate comes from DISCGRP, falling back to the DEFAULT group."
+  sources: [CONFLUENCE:2004, JIRA:CARD-112]
+
+- id: q05
+  question: Does the interest job charge late fees?
+  expected_route: conflict
+  entities: [PROGRAM:CBACT04C, PARAGRAPH:CBACT04C.1400-COMPUTE-FEES]
+  answer_facts:
+    - "No. 1400-COMPUTE-FEES is an empty stub (\"To be implemented\")."
+    - "The design page says otherwise, and CARD-102 tracks the work."
+  sources: [CONFLUENCE:2004, JIRA:CARD-102]
+
+- id: q06
+  question: Which programs include the CVACT01Y copybook?
+  expected_route: graph
+  entities: [COPYBOOK:CVACT01Y]
+  answer_facts:
+    - "13 programs: CBACT01C, CBACT04C, CBEXPORT, CBIMPORT, CBSTM03A, CBTRN01C, CBTRN02C, COACTUPC, COACTVWC, COBIL00C, COCRDSLC, COCRDUPC, COTRN02C."
+
+- id: q07
+  question: If I change the USRSEC record layout, what do I need to recompile?
+  expected_route: graph+docs
+  entities: [COPYBOOK:CSUSR01Y, DATASET:USRSEC]
+  answer_facts:
+    - "The 12 programs that copy CSUSR01Y, including COSGN00C, COMEN01C, COADM01C and COUSR00C to COUSR03C."
+  sources: [JIRA:CARD-103]
+
+- id: q08
+  question: Which programs can the main menu transfer to?
+  expected_route: graph+docs
+  entities: [PROGRAM:COMEN01C, COPYBOOK:COMEN02Y]
+  answer_facts:
+    - "The targets come from the option table in COMEN02Y, not from literal XCTL calls."
+  sources: [JIRA:CARD-107]
+
+- id: q09
+  question: What does S0C7 mean?
+  expected_route: docs
+  entities: []
+  answer_facts:
+    - "An abend caused by bad numeric data."
+  sources: [CONFLUENCE:2007]
+
+- id: q10
+  question: What is the order of the nightly batch jobs?
+  expected_route: docs
+  entities: []
+  answer_facts:
+    - "CLOSEFIL, POSTTRAN, INTCALC, COMBTRAN, CREASTMT, OPENFIL."
+  sources: [CONFLUENCE:2002]
+
+- id: q11
+  question: Can a customer pay part of their balance online?
+  expected_route: graph+docs
+  entities: [PROGRAM:COBIL00C]
+  answer_facts:
+    - "No. COBIL00C always pays the full current balance."
+    - "CARD-109 asks for partial payments."
+  sources: [CONFLUENCE:2006, JIRA:CARD-109]
+
+- id: q12
+  question: Are there known problems with how bill payment creates transaction IDs?
+  expected_route: graph+docs
+  entities: [PROGRAM:COBIL00C, DATASET:TRANSACT]
+  answer_facts:
+    - "It takes the highest ID and adds one, so concurrent payments can collide (CARD-104)."
+  sources: [JIRA:CARD-104]
+
+- id: q13
+  question: Is the posting job safe to rerun?
+  expected_route: graph+docs
+  entities: [JOB:POSTTRAN]
+  answer_facts:
+    - "No. Rerunning posts transactions twice; restore TRANSACT from TRANBKP first."
+  sources: [CONFLUENCE:2002]
+
+- id: q14
+  question: Which program produces customer statements, and what does it call?
+  expected_route: graph
+  entities: [JOB:CREASTMT, PROGRAM:CBSTM03A]
+  answer_facts:
+    - "CREASTMT step STEP040 runs CBSTM03A, which CALLs CBSTM03B."
+
+- id: q15
+  question: When is the weekly change board?
+  expected_route: docs
+  entities: []
+  answer_facts:
+    - "Thursdays."
+  sources: [CONFLUENCE:2008]
+
+- id: q16
+  question: What does the interest job do when an account's disclosure group is missing?
+  expected_route: graph+docs
+  entities: [PROGRAM:CBACT04C, DATASET:DISCGRP]
+  answer_facts:
+    - "It uses the DEFAULT group and only logs a message."
+    - "CARD-106 says 212 accounts were overcharged this way."
+  sources: [CONFLUENCE:2004, JIRA:CARD-106]
