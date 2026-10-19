@@ -1,0 +1,3 @@
+# AWS CardDemo, Apache-2.0. Fetched by scripts/fetch_corpus.py into corpus/carddemo/.
+repo=https://github.com/aws-samples/aws-mainframe-modernization-carddemo.git
+commit=59cc6c2fd7ebd7ef7925cad552a01a4b8b6e4d5e
