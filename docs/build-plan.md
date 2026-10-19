@@ -1,5 +1,9 @@
 # Build plan: milestones 2 to 5
 
+> **Status:** built in PR #2. This file is kept as the record of the plan. Where the
+> code differs (tool names, file names such as `src/legacylens/evals.py` instead of
+> `evals/run.py`), the code and `docs/architecture.md` are current.
+
 This is the work left for LegacyLens to answer questions end to end. It is written
 for Claude Code to follow one milestone at a time. Read `CLAUDE.md`,
 `docs/architecture.md` and the ADRs in `docs/adr/` first; this plan does not repeat
@@ -93,7 +97,7 @@ them.
   - `PROGRAM:CBSTM03A -CALLS-> PROGRAM:CBSTM03B`
   - `PROGRAM:COSGN00C -XCTL->` both `COADM01C` and `COMEN01C`
   - `PROGRAM:CBTRN02C -READS-> DATASET:CARDXREF`
-  - the 13 programs that include `COPYBOOK:CVACT01Y` (the list is in `evals/questions.yaml` q06)
+  - the 11 base-app programs that include `COPYBOOK:CVACT01Y` (the list is in `evals/questions.yaml` q06)
   - `PARAGRAPH:CBACT04C.1400-COMPUTE-FEES` exists
 - Add `src/legacylens/retrieval/graph_queries.py` with named GQL templates, so the
   graph-only eval questions can be checked:

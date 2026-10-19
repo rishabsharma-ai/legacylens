@@ -17,15 +17,32 @@ You need [uv](https://docs.astral.sh/uv/) and Docker.
 ```bash
 cp .env.example .env
 make setup       # install Python deps
-make emulator    # start the Spanner emulator
+make emulator    # start the Spanner emulator (keeps data in memory only)
 make corpus      # fetch CardDemo
-make db          # create the database
-make test
+make load        # create the database, load the code graph and the documents
+make ui          # chat page at http://localhost:8000
 ```
+
+That works with no API key: answers show the evidence (graph facts and document
+snippets). For written answers, get a free key at
+[Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` in
+`.env`, or point `LLM_MODEL` at a local Ollama model such as `ollama/qwen3:4b`.
+
+Other commands:
+
+```bash
+make adk         # the agentic agent in ADK's dev UI, showing every tool call
+make okf         # regenerate the knowledge/ pages after the graph changes
+make eval        # score retrieval and answers; writes evals/results/
+make test        # all tests (emulator tests skip if it isn't running)
+```
+
+The emulator forgets everything when it stops, so run `make load` after each restart.
 
 ## Read next
 
 - [Architecture](docs/architecture.md): the whole system on one page
 - [Decision records](docs/adr/README.md): why it is built this way
 - [Learning notes](docs/learning/README.md): mainframe primer and RAG patterns
+- [Knowledge pages](knowledge/index.md): the generated OKF bundle
 - [Roadmap](docs/roadmap.md)

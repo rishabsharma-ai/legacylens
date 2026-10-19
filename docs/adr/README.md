@@ -14,3 +14,5 @@ rather than editing history. Copy `0000-template.md` to start a new one.
 | [0006](0006-models-and-cost.md) | Local embeddings, LLM through LiteLLM, zero cloud cost |
 | [0007](0007-okf-knowledge-layer.md) | Generate an OKF bundle as a curated layer on top of the graph |
 | [0008](0008-tooling.md) | Python 3.12, uv, ruff, pytest, and a Claude Code project setup |
+| [0009](0009-answering-and-model-routing.md) | Workflow and agentic answering, an evidence-only mode, and a rule-based model router |
+| [0010](0010-custom-chat-page.md) | A FastAPI chat page with an evidence panel and no front-end build |

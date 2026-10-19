@@ -153,3 +153,31 @@ def test_csd(tmp_path):
     defs = cics.parse_csd(path)
     assert defs["transactions"] == {"CC00": "COSGN00C"}
     assert defs["files"] == {"ACCTDAT": "AWS.M2.CARDDEMO.ACCTDATA.VSAM.KSDS"}
+
+
+def test_ims_segments_and_mq_queues(tmp_path):
+    src = cobol.Source.read(
+        write(
+            tmp_path,
+            "MQIMS.cbl",
+            fixed(
+                "PROCEDURE DIVISION.",
+                "    EXEC DLI GU USING PCB(1)",
+                "        SEGMENT (PAUTSUM0)",
+                "        INTO (SUMMARY)",
+                "    END-EXEC.",
+                "    EXEC DLI ISRT USING PCB(1)",
+                "        SEGMENT (PAUTSUM0) SEGMENT (PAUTDTL1)",
+                "    END-EXEC.",
+                "    EXEC DLI SCHD PSB((PSB-NAME)) END-EXEC.",
+                "    MOVE 'CARD.DEMO.ERROR' TO ERROR-QUEUE-NAME.",
+                "    CALL 'MQPUT' USING HCONN.",
+            ),
+        )
+    )
+    assert cobol.dli_segments(src) == [
+        ("READS", "PAUTSUM0", 2),
+        ("WRITES", "PAUTSUM0", 6),
+        ("WRITES", "PAUTDTL1", 6),
+    ]
+    assert cobol.mq_queues(src) == [("WRITES", "CARD.DEMO.ERROR", 10)]

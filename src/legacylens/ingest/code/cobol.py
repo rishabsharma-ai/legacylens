@@ -110,6 +110,8 @@ class Program:
     moves: dict[str, list[str]]  # variable -> every 'LITERAL' or variable MOVEd into it
     rules: list[dict]
     sql: list[tuple[str, str, int]] = field(default_factory=list)  # (READS|WRITES, table, line)
+    dli: list[tuple[str, str, int]] = field(default_factory=list)  # IMS segments
+    mq: list[tuple[str, str, int]] = field(default_factory=list)  # MQ queues
 
 
 def header_summary(src: Source) -> str | None:
@@ -166,6 +168,35 @@ def sql_tables(src: Source) -> tuple[list[tuple[str, str, int]], list[str]]:
         for t in re.findall(rf"\b(?:INSERT\s+INTO|UPDATE)\s+{table}", body):
             uses.append(("WRITES", t, line))
     return uses, includes
+
+
+DLI_READS = {"GU", "GN", "GNP", "GHU", "GHN", "GHNP"}
+DLI_WRITES = {"ISRT", "REPL", "DLET"}
+
+
+def dli_segments(src: Source) -> list[tuple[str, str, int]]:
+    """IMS segments used in EXEC DLI blocks, e.g. EXEC DLI GU ... SEGMENT (PAUTSUM0)."""
+    uses = []
+    for m in re.finditer(r"EXEC\s+DLI\s+([A-Z]+)(.*?)END-EXEC", src.text, re.S):
+        call = m.group(1)
+        if call not in DLI_READS | DLI_WRITES:
+            continue
+        edge = "READS" if call in DLI_READS else "WRITES"
+        for seg in re.findall(r"SEGMENT\s*\(\s*([A-Z0-9-]+)\s*\)", m.group(2)):
+            uses.append((edge, seg, src.line_of(m.start())))
+    return uses
+
+
+def mq_queues(src: Source) -> list[tuple[str, str, int]]:
+    """MQ queues named by a literal, e.g. MOVE 'CARD.DEMO.ERROR' TO ERROR-QUEUE-NAME.
+
+    Queues a program reads usually come from the MQ trigger message (MQTM-QNAME), so
+    only the literal queues, which these programs put replies and errors on, are known.
+    """
+    pattern = r"\bMOVE\s+'([A-Z0-9.]+\.[A-Z0-9.]+)'\s+TO\s+[A-Z0-9-]*(?:QUEUE|QNAME)[A-Z0-9-]*"
+    if not re.search(r"CALL\s+'MQ(?:PUT|PUT1)'", src.text):
+        return []
+    return [("WRITES", m.group(1), src.line_of(m.start())) for m in re.finditer(pattern, src.text)]
 
 
 def paragraphs(src: Source) -> list[Paragraph]:
@@ -282,6 +313,8 @@ def parse_program(path: Path) -> Program | None:
         moves=moves_into(text),
         rules=business_rules(src, paras),
         sql=sql,
+        dli=dli_segments(src),
+        mq=mq_queues(src),
     )
 
 

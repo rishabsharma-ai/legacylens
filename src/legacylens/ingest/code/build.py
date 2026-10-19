@@ -161,8 +161,16 @@ def build_graph(root: Path = CORPUS) -> Graph:
         for edge, table, line in prog.sql:
             if table == "SQLCA":
                 continue
-            g.add_node(NodeRow("Dataset", table, props={"kind": "db2_table"}))
+            g.add_node(NodeRow("Dataset", table, summary="Db2 table.", props={"kind": "db2_table"}))
             g.add_edge(pid, edge, node_id("Dataset", table), lines=line)
+        stores = (
+            ("ims_segment", "IMS database segment.", prog.dli),
+            ("mq_queue", "MQ queue.", prog.mq),
+        )
+        for kind, summary, uses in stores:
+            for edge, name, line in uses:
+                g.add_node(NodeRow("Dataset", name, summary=summary, props={"kind": kind}))
+                g.add_edge(pid, edge, node_id("Dataset", name), lines=line)
 
         for n, rule in enumerate(prog.rules):
             name = f"{prog.name}.{rule['paragraph']}.{rule['kind'].upper()}-{n}"

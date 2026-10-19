@@ -26,6 +26,11 @@ make setup      # install deps (uv sync)
 make emulator   # start the Spanner emulator in Docker on :9010
 make corpus     # fetch the pinned CardDemo source into corpus/carddemo/
 make db         # create the database and apply the schema
+make load       # db + load the code graph + load the documents
+make okf        # regenerate knowledge/ (commit it; a test checks it matches the graph)
+make ui         # chat page on :8000
+make adk        # agentic agent in ADK's dev UI
+make eval       # score retrieval and answers
 make test       # all tests; emulator tests skip if it isn't running
 make lint       # ruff check + format check
 ```
@@ -37,8 +42,10 @@ Set `SPANNER_EMULATOR_HOST=localhost:9010` (in `.env`) before anything touches S
 - `src/legacylens/store/schema.sql`: the whole schema. Statements are separated by a
   line holding only `;`.
 - `src/legacylens/store/spanner.py`: connect, create the instance, reset the database.
-- `src/legacylens/ingest/`, `retrieval/`, `agents/`, `okf/`: filled in by later
-  milestones (see `docs/roadmap.md`).
+- `src/legacylens/ingest/code/` (parsers, `build.py`), `ingest/docs/` (chunk, embed,
+  link), `retrieval/` (GQL templates, `search.graph_first`), `agents/` (workflow and
+  agentic agents, tools, judge), `okf/generate.py`, `ui/` (FastAPI + one HTML file).
+- `adk/lens/`: ADK dev UI entry point. `knowledge/`: generated OKF bundle.
 - `corpus/docs/`: synthetic Confluence pages (Markdown with frontmatter) and Jira
   tickets (`jira/tickets.jsonl`).
 - `evals/questions.yaml`: questions with expected route, entities, facts and sources.
@@ -49,6 +56,8 @@ Set `SPANNER_EMULATOR_HOST=localhost:9010` (in `.env`) before anything touches S
   `PARAGRAPH:CBACT04C.1400-COMPUTE-FEES`. Chunk IDs are `CHUNK:<doc_id>#<n>`.
 - Node and edge types: see ADR-0003 and the tables in `docs/architecture.md`.
 - Every loader is idempotent, because the emulator forgets everything on restart.
-- Mark emulator tests with `pytestmark = pytest.mark.emulator`.
+- Mark emulator tests with `pytestmark = pytest.mark.emulator`. Tests that call the
+  default database use the `knowledge_db` fixture.
+- Everything must work with no LLM key (`LLM_MODEL=none`): the evidence-only answer.
 - Before changing a synthetic doc or eval question, run `make test`. The corpus
   tests check they still agree with each other and with CardDemo.

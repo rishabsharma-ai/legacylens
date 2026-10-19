@@ -1,4 +1,4 @@
-.PHONY: setup emulator emulator-stop corpus db load-code load-docs load eval test lint format
+.PHONY: setup emulator emulator-stop corpus db load-code load-docs load okf eval ui adk test lint format
 
 include $(wildcard .env)
 export
@@ -26,8 +26,17 @@ load-docs:
 
 load: db load-code load-docs
 
+okf:
+	uv run python -m legacylens.okf.generate
+
 eval:
 	uv run python -m legacylens.evals
+
+ui:
+	uv run uvicorn legacylens.ui.app:app --port 8000
+
+adk:
+	uv run adk web adk
 
 test:
 	uv run pytest

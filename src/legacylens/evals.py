@@ -6,6 +6,7 @@ Writes evals/results/<date>-retrieval.md and prints the same table.
 
 import argparse
 import datetime as dt
+import re
 from pathlib import Path
 
 import yaml
@@ -26,7 +27,40 @@ def strategies(k: int = 6):
         "naive": lambda q: search.Retrieval(q, "docs", [], [], search.vector_search(q, k)),
         "hybrid": lambda q: search.Retrieval(q, "docs", [], [], search.hybrid_search(q, k)),
         "graph_first": lambda q: search.graph_first(q, k),
+        "okf_browse": lambda q: okf_browse(q, k),
     }
+
+
+FOLDER_TYPES = {"programs": "PROGRAM", "jobs": "JOB", "transactions": "TRANSACTION",
+                "screens": "SCREEN", "copybooks": "COPYBOOK", "datasets": "DATASET"}  # fmt: skip
+
+
+def okf_browse(question: str, k: int) -> search.Retrieval:
+    """Answer from the OKF bundle alone: open each entity's page, follow its links.
+
+    No vector index and no database queries after entity lookup, so questions that
+    name no entity find nothing. That gap is the point of comparing it.
+    """
+    from legacylens.okf.generate import read_page
+
+    entities = search.resolve_entities(question)
+    facts, doc_ids = [], []
+    for e in entities:
+        kind, name = e["node_id"].split(":", 1)
+        if kind in ("PARAGRAPH", "BUSINESSRULE"):  # these live on their program's page
+            kind, name = "PROGRAM", name.split(".")[0]
+        folder = next((f for f, t in FOLDER_TYPES.items() if t == kind), None)
+        page = read_page(f"{folder}/{name}.md") if folder else {"error": "no page"}
+        if "error" in page:
+            continue
+        links = re.findall(r"\]\(\.\./(\w+)/([^)]+)\.md\)", page["text"])
+        edges = [{"src": e["node_id"], "edge": "LINK", "dst": f"{FOLDER_TYPES[f]}:{n}"}
+                 for f, n in links if f in FOLDER_TYPES]  # fmt: skip
+        facts.append({"node_id": e["node_id"], "edges": edges})
+        doc_ids += re.findall(r"`((?:CONFLUENCE|JIRA):[A-Z0-9-]+)`", page["text"])
+    hits = [search.Hit(d, d, "", "", "", 0.0, "okf") for d in list(dict.fromkeys(doc_ids))[:k]]
+    route = "graph+docs" if hits else ("graph" if facts else "docs")
+    return search.Retrieval(question, route, entities, facts, hits)
 
 
 def recall(expected: list[str], got: list[str]) -> float | None:
@@ -88,7 +122,7 @@ def report(rows: dict) -> str:
         def sr(routes, per_q=per_q):
             return mean(p["source_recall"] for p in per_q if p["route_expected"] in routes)
 
-        has_entities = name == "graph_first"
+        has_entities = name in ("graph_first", "okf_browse")
         lines.append(
             "| {} | {} | {} | {} | {} | {} |".format(
                 name,

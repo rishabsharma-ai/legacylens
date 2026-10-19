@@ -1,0 +1,98 @@
+---
+type: program
+title: COTRTUPC
+description: Accept and process TRANSACTION TYPE UPDATE
+tags:
+- db2-transaction-type
+- online
+- program
+resource: https://github.com/aws-samples/aws-mainframe-modernization-carddemo/blob/59cc6c2fd7ebd7ef7925cad552a01a4b8b6e4d5e/app/app-transaction-type-db2/cbl/COTRTUPC.cbl
+---
+
+# COTRTUPC
+
+Accept and process TRANSACTION TYPE UPDATE
+
+Source: [app/app-transaction-type-db2/cbl/COTRTUPC.cbl](https://github.com/aws-samples/aws-mainframe-modernization-carddemo/blob/59cc6c2fd7ebd7ef7925cad552a01a4b8b6e4d5e/app/app-transaction-type-db2/cbl/COTRTUPC.cbl) lines 1-1702
+
+## Relationships
+
+- Includes: [COCOM01Y](../copybooks/COCOM01Y.md), [COTRTUP](../copybooks/COTRTUP.md), [COTTL01Y](../copybooks/COTTL01Y.md), [CSDAT01Y](../copybooks/CSDAT01Y.md), [CSMSG01Y](../copybooks/CSMSG01Y.md), [CSMSG02Y](../copybooks/CSMSG02Y.md), [CSSETATY](../copybooks/CSSETATY.md), [CSSTRPFY](../copybooks/CSSTRPFY.md), [CSUSR01Y](../copybooks/CSUSR01Y.md), [CSUTLDWY](../copybooks/CSUTLDWY.md), [CVCRD01Y](../copybooks/CVCRD01Y.md), [DCLTRCAT](../copybooks/DCLTRCAT.md), [DCLTRTYP](../copybooks/DCLTRTYP.md), `DFHAID`, `DFHBMSCA`, `SQLCA`
+- Reached by XCTL from: [COADM01C](../programs/COADM01C.md), [COTRTLIC](../programs/COTRTLIC.md)
+- Reads: [TRANSACTION_TYPE](../datasets/TRANSACTION_TYPE.md)
+- Transfers control to (XCTL): [COADM01C](../programs/COADM01C.md)
+- Uses screen: [COTRTUP](../screens/COTRTUP.md)
+- Writes: [TRANSACTION_TYPE](../datasets/TRANSACTION_TYPE.md)
+
+## Business rules
+
+- `1210-EDIT-TRANTYPE` line 835: COMPUTE WS-EDIT-NUMERIC-2 = FUNCTION NUMVAL(TTUP-NEW-TTYP-TYPE)
+- `3250-SETUP-INFOMSG` line 1251: COMPUTE WS-STRING-LEN =
+- `3250-SETUP-INFOMSG` line 1255: COMPUTE WS-STRING-MID = (FUNCTION LENGTH(WS-INFO-MSG) - WS-STRING-LEN) / 2 + 1
+- `9600-WRITE-PROCESSING` line 1541: COMPUTE DCL-TR-DESCRIPTION-LEN = FUNCTION LENGTH(TTUP-NEW-TTYP-TYPE-DESC)
+
+## Paragraphs (63)
+
+- `0000-MAIN` (line 345)
+- `COMMON-RETURN` (line 559)
+- `0000-MAIN-EXIT` (line 573)
+- `0001-CHECK-PFKEYS` (line 577)
+- `0001-CHECK-PFKEYS-EXIT` (line 621)
+- `1000-PROCESS-INPUTS` (line 625)
+- `1000-PROCESS-INPUTS-EXIT` (line 638)
+- `1100-RECEIVE-MAP` (line 641)
+- `1100-RECEIVE-MAP-EXIT` (line 649)
+- `1150-STORE-MAP-IN-NEW` (line 652)
+- `1150-STORE-MAP-IN-NEW-EXIT` (line 686)
+- `1200-EDIT-MAP-INPUTS` (line 689)
+- `1200-EDIT-MAP-INPUTS-EXIT` (line 779)
+- `1205-COMPARE-OLD-NEW` (line 783)
+- `1205-COMPARE-OLD-NEW-EXIT` (line 814)
+- `1210-EDIT-TRANTYPE` (line 820)
+- `1210-EDIT-TRANTYPE-EXIT` (line 845)
+- `1230-EDIT-ALPHANUM-REQD` (line 849)
+- `1230-EDIT-ALPHANUM-REQD-EXIT` (line 903)
+- `1245-EDIT-NUM-REQD` (line 907)
+- `1245-EDIT-NUM-REQD-EXIT` (line 974)
+- `2000-DECIDE-ACTION` (line 978)
+- `2000-DECIDE-ACTION-EXIT` (line 1083)
+- `3000-SEND-MAP` (line 1089)
+- `3000-SEND-MAP-EXIT` (line 1106)
+- `3100-SCREEN-INIT` (line 1110)
+- `3100-SCREEN-INIT-EXIT` (line 1136)
+- `3200-SETUP-SCREEN-VARS` (line 1140)
+- `3200-SETUP-SCREEN-VARS-EXIT` (line 1172)
+- `3201-SHOW-INITIAL-VALUES` (line 1176)
+- `3201-SHOW-INITIAL-VALUES-EXIT` (line 1181)
+- `3202-SHOW-ORIGINAL-VALUES` (line 1185)
+- `3202-SHOW-ORIGINAL-VALUES-EXIT` (line 1194)
+- `3203-SHOW-UPDATED-VALUES` (line 1197)
+- `3203-SHOW-UPDATED-VALUES-EXIT` (line 1203)
+- `3250-SETUP-INFOMSG` (line 1210)
+- `3250-SETUP-INFOMSG-EXIT` (line 1266)
+- `3300-SETUP-SCREEN-ATTRS` (line 1269)
+- `3300-SETUP-SCREEN-ATTRS-EXIT` (line 1364)
+- `3310-PROTECT-ALL-ATTRS` (line 1368)
+- `3310-PROTECT-ALL-ATTRS-EXIT` (line 1373)
+- `3320-UNPROTECT-FEW-ATTRS` (line 1377)
+- `3320-UNPROTECT-FEW-ATTRS-EXIT` (line 1382)
+- `3390-SETUP-INFOMSG-ATTRS` (line 1386)
+- `3390-SETUP-INFOMSG-ATTRS-EXIT` (line 1393)
+- `3391-SETUP-PFKEY-ATTRS` (line 1397)
+- `3391-SETUP-PFKEY-ATTRS-EXIT` (line 1424)
+- `3400-SEND-SCREEN` (line 1428)
+- `3400-SEND-SCREEN-EXIT` (line 1442)
+- `9000-READ-TRANTYPE` (line 1447)
+- `9000-READ-TRANTYPE-EXIT` (line 1466)
+- `9100-GET-TRANSACTION-TYPE` (line 1469)
+- `9100-GET-TRANSACTION-TYPE-EXIT` (line 1512)
+- `9500-STORE-FETCHED-DATA` (line 1517)
+- `9500-STORE-FETCHED-DATA-EXIT` (line 1528)
+- `9600-WRITE-PROCESSING` (line 1531)
+- `9600-WRITE-PROCESSING-EXIT` (line 1593)
+- `9700-INSERT-RECORD` (line 1596)
+- `9700-INSERT-RECORD-EXIT` (line 1621)
+- `9800-DELETE-PROCESSING` (line 1624)
+- `9800-DELETE-PROCESSING-EXIT` (line 1664)
+- `ABEND-ROUTINE` (line 1675)
+- `ABEND-ROUTINE-EXIT` (line 1699)
